@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d1319" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+<title>Östermalm Departures</title>
+<meta name="description" content="Live SL departures from Banérgatan, Värtavägen and Karlaplan.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #eef1f4;
+    --surface: #ffffff;
+    --sunken: #e3e8ed;
+    --ink: #121a21;
+    --ink-soft: #52616d;
+    --ink-faint: #8493a0;
+    --line: #d2dae1;
+    --bus: #1a5fa8;
+    --metro: #b8332a;
+    --alert: #a83a14;
+    --alert-soft: #f7e7df;
+    --shadow: 0 1px 2px rgba(18, 26, 33, .06), 0 5px 16px rgba(18, 26, 33, .045);
+    --display: "Barlow Condensed", "Helvetica Neue", Arial, sans-serif;
+    --body: "Barlow", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --badge-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0d1319;
+      --surface: #151d25;
+      --sunken: #1b242d;
+      --ink: #e7edf2;
+      --ink-soft: #9aabb7;
+      --ink-faint: #6b7d8a;
+      --line: #232f39;
+      --bus: #6aa9e8;
+      --metro: #e8705f;
+      --alert: #ef8b5f;
+      --alert-soft: #2e2018;
+      --shadow: none;
+      --badge-ink: #0d1319;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d1319;
+    --surface: #151d25;
+    --sunken: #1b242d;
+    --ink: #e7edf2;
+    --ink-soft: #9aabb7;
+    --ink-faint: #6b7d8a;
+    --line: #232f39;
+    --bus: #6aa9e8;
+    --metro: #e8705f;
+    --alert: #ef8b5f;
+    --alert-soft: #2e2018;
+    --shadow: none;
+    --badge-ink: #0d1319;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 540px; margin: 0 auto; padding: 22px 16px 36px; display: grid; gap: 12px; }
+
+  /* ---------- boards ---------- */
+  .board {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px 15px;
+  }
+  .board-head { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+  .badge {
+    flex: none;
+    color: var(--badge-ink);
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 1;
+    padding: 7px 9px 5px;
+    border-radius: 5px;
+    min-width: 34px;
+    text-align: center;
+  }
+  .badge.bus { background: var(--bus); }
+  .badge.metro { background: var(--metro); border-radius: 999px; padding: 7px 11px 5px; }
+  .board-head .place {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: 0.005em;
+    line-height: 1.15;
+  }
+  .board-head .kind {
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .group { padding-top: 10px; }
+  .group + .group { border-top: 1px solid var(--line); margin-top: 8px; }
+  .group .towards {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    letter-spacing: 0.01em;
+    margin-bottom: 3px;
+  }
+  .group .towards .arrow { color: var(--ink-faint); }
+
+  .times { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .t {
+    font-family: var(--display);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .t .n { font-weight: 700; }
+  .t .u { font-weight: 500; color: var(--ink-faint); }
+  .t.first { font-size: 40px; }
+  .t.first .u { font-size: 19px; margin-left: 3px; }
+  .t.rest { font-size: 23px; color: var(--ink-soft); }
+  .t.rest .u { font-size: 14px; margin-left: 2px; }
+  .t.off { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+  .t .mark {
+    font-family: var(--body);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--alert);
+    vertical-align: super;
+    margin-left: 2px;
+    letter-spacing: 0.02em;
+  }
+  .none { font-size: 14.5px; color: var(--ink-faint); padding: 2px 0 3px; }
+  .skel-line {
+    height: 28px; width: 62%;
+    border-radius: 4px;
+    background: var(--sunken);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .skel-line { animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .5 } }
+  }
+
+  /* ---------- notices ---------- */
+  .notice {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--alert);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+  .notice .head { font-weight: 600; }
+  .notice p { margin: 0; }
+  .notice p + p { margin-top: 6px; }
+  .notice code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.86em;
+    background: var(--sunken);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  /* ---------- bar ---------- */
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--ink-faint);
+    padding: 2px 2px 0;
+  }
+  .spacer { flex: 1; }
+  .stamp { font-variant-numeric: tabular-nums; }
+  .stamp.stale { color: var(--alert); }
+  button.reload {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  button.reload:hover { background: var(--sunken); color: var(--ink); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--bus); outline-offset: 2px; }
+  .credit { font-size: 12px; color: var(--ink-faint); text-align: center; }
+  .credit a { color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div id="notices"></div>
+  <div id="boards" aria-live="polite"></div>
+
+  <div class="bar">
+    <span class="stamp" id="stamp"></span>
+    <span class="spacer"></span>
+    <button type="button" class="reload" id="reload">Refresh</button>
+  </div>
+
+  <p class="credit">Live data from <a href="https://www.trafiklab.se/api/our-apis/sl/transport/" rel="noopener">SL Transport</a></p>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const FORECAST = 60;          // minutes of lookahead requested from SL
+  const REFRESH_MS = 30000;
+  const SHOW = 4;               // departures listed per direction
+  const api = (site) => `https://transport.integration.sl.se/v1/sites/${site}/departures?forecast=${FORECAST}`;
+
+  const has = (d, needle) =>
+    `${d.direction || ''} ${d.destination || ''}`.toLowerCase().includes(needle);
+
+  // Each board reads from one SL site and picks out the lines and directions worth seeing.
+  const BOARDS = [
+    {
+      key: 'bus4',
+      site: 1114,
+      badge: '4',
+      mode: 'bus',
+      place: 'Banérgatan',
+      kind: 'Blåbuss',
+      pick: (d) => d.line === '4' && has(d, 'gullmarsplan'),
+      groups: [{ label: 'Gullmarsplan' }],
+    },
+    {
+      key: 'bus1',
+      site: 1115,
+      badge: '1',
+      mode: 'bus',
+      place: 'Värtavägen',
+      kind: 'Blåbuss',
+      pick: (d) => d.line === '1' && has(d, 'stora essingen'),
+      preferStopArea: 'Värtavägen',
+      groups: [{ label: 'Stora Essingen' }],
+    },
+    {
+      key: 'metro13',
+      site: 1115,
+      badge: '13',
+      mode: 'metro',
+      place: 'Karlaplan',
+      kind: 'Metro · red line',
+      pick: (d) => d.mode === 'METRO',
+      groupByDirection: true,
+    },
+  ];
+
+  const SITES = [...new Set(BOARDS.map(b => b.site))];
+
+  const el = {
+    boards: document.getElementById('boards'),
+    notices: document.getElementById('notices'),
+    stamp: document.getElementById('stamp'),
+  };
+
+  const payloads = new Map();   // site -> last good payload
+  const errors = new Map();     // site -> last error
+  let fetchedAt = null;
+  let timer = null;
+
+  document.getElementById('reload').addEventListener('click', () => load());
+
+  /* ---------- time ---------- */
+  // SL returns Stockholm wall-clock with no offset, e.g. "2026-09-03T10:42:07".
+  // Parsed as local time, which is right on a device set to Swedish time.
+  function parse(s) {
+    const m = typeof s === 'string' && s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+  }
+  const minsUntil = (d) => Math.round((d - Date.now()) / 60000);
+  const clock = (d) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+
+  /* ---------- data ---------- */
+  function normalise(site) {
+    const payload = payloads.get(site);
+    const raw = (payload && Array.isArray(payload.departures)) ? payload.departures : [];
+    return raw.map(d => {
+      const expected = parse(d.expected) || parse(d.scheduled);
+      const scheduled = parse(d.scheduled);
+      return {
+        line: (d.line && d.line.designation) || '',
+        mode: (d.line && d.line.transport_mode) || '',
+        direction: d.direction || '',
+        destination: d.destination || d.direction || '',
+        stopArea: (d.stop_area && d.stop_area.name) || '',
+        expected,
+        scheduled,
+        delay: (expected && scheduled) ? Math.round((expected - scheduled) / 60000) : 0,
+        cancelled: d.state === 'CANCELLED',
+        deviations: Array.isArray(d.deviations) ? d.deviations : [],
+      };
+    }).filter(d => d.expected && minsUntil(d.expected) >= -1);
+  }
+
+  function departuresFor(board) {
+    let list = normalise(board.site).filter(board.pick);
+    // Some sites cover several physical stops; keep the right one when it's present.
+    if (board.preferStopArea && list.some(d => d.stopArea === board.preferStopArea)) {
+      list = list.filter(d => d.stopArea === board.preferStopArea);
+    }
+    return list.sort((a, b) => a.expected - b.expected);
+  }
+
+  async function loadSite(site) {
+    try {
+      const res = await fetch(api(site), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      payloads.set(site, await res.json());
+      errors.delete(site);
+      return true;
+    } catch (err) {
+      errors.set(site, err);
+      return false;
+    }
+  }
+
+  async function load() {
+    const results = await Promise.all(SITES.map(loadSite));
+    if (results.some(Boolean)) fetchedAt = new Date();
+    render();
+  }
+
+  /* ---------- rendering ---------- */
+  function node(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function timeNode(d, cls) {
+    const wrap = node('span', `t ${cls}${d.cancelled ? ' off' : ''}`);
+    const mins = minsUntil(d.expected);
+
+    if (d.cancelled) {
+      wrap.appendChild(node('span', 'n', clock(d.expected)));
+    } else if (mins <= 0) {
+      wrap.appendChild(node('span', 'n', 'now'));
+    } else if (mins < 60) {
+      wrap.appendChild(node('span', 'n', String(mins)));
+      wrap.appendChild(node('span', 'u', 'min'));
+    } else {
+      wrap.appendChild(node('span', 'n', clock(d.expected)));
+    }
+
+    if (d.cancelled) {
+      wrap.appendChild(node('span', 'mark', 'cancelled'));
+      wrap.title = 'Cancelled by SL';
+    } else if (d.delay >= 2) {
+      wrap.appendChild(node('span', 'mark', `+${d.delay}`));
+      wrap.title = `${d.delay} min late · timetabled ${clock(d.scheduled)}`;
+    } else {
+      wrap.title = `Departs ${clock(d.expected)}`;
+    }
+    return wrap;
+  }
+
+  function groupNode(label, list, showLabel) {
+    const g = node('div', 'group');
+    if (showLabel) {
+      const t = node('div', 'towards');
+      t.appendChild(node('span', 'arrow', '→ '));
+      t.append(label);
+      g.appendChild(t);
+    }
+    if (!list.length) {
+      g.appendChild(node('div', 'none', fetchedAt ? `Nothing in the next ${FORECAST} min.` : ''));
+      if (!fetchedAt) g.appendChild(node('div', 'skel-line'));
+      return g;
+    }
+    const times = node('div', 'times');
+    list.slice(0, SHOW).forEach((d, i) => times.appendChild(timeNode(d, i === 0 ? 'first' : 'rest')));
+    g.appendChild(times);
+    return g;
+  }
+
+  function boardNode(board) {
+    const wrap = node('section', 'board');
+
+    const head = node('div', 'board-head');
+    head.appendChild(node('span', `badge ${board.mode}`, board.badge));
+    const label = node('div');
+    label.appendChild(node('div', 'place', board.place));
+    label.appendChild(node('div', 'kind', board.kind));
+    head.appendChild(label);
+    wrap.appendChild(head);
+
+    const list = departuresFor(board);
+
+    if (board.groupByDirection) {
+      // Group by whatever directions SL reports, so both ends of the line show up.
+      const byDir = new Map();
+      list.forEach(d => {
+        if (!byDir.has(d.direction)) byDir.set(d.direction, []);
+        byDir.get(d.direction).push(d);
+      });
+      const dirs = [...byDir.keys()].sort((a, b) => a.localeCompare(b, 'sv'));
+      if (!dirs.length) {
+        wrap.appendChild(groupNode('', [], false));
+      } else {
+        dirs.forEach(dir => wrap.appendChild(groupNode(dir, byDir.get(dir), true)));
+      }
+    } else {
+      board.groups.forEach(g => wrap.appendChild(groupNode(g.label, list, true)));
+    }
+
+    return wrap;
+  }
+
+  function renderNotices() {
+    el.notices.replaceChildren();
+
+    const allFailed = SITES.every(s => !payloads.has(s));
+    if (allFailed && errors.size) {
+      const box = node('div', 'notice');
+      box.appendChild(node('p', 'head', "Couldn't reach SL"));
+      const p = node('p');
+      p.append(
+        'The departures API refused the request from this page. If the browser console mentions ',
+        node('code', null, 'CORS'),
+        ", SL is blocking calls from other websites and this page needs a small proxy in front of it. Otherwise it's most likely a dropped connection — try Refresh."
+      );
+      box.appendChild(p);
+      el.notices.appendChild(box);
+      return;
+    }
+
+    if (errors.size) {
+      el.notices.appendChild(
+        node('div', 'notice', 'One stop failed to refresh — showing its previous result.')
+      );
+    }
+
+    // SL's own disruption messages for these stops.
+    const msgs = new Set();
+    SITES.forEach(s => {
+      const p = payloads.get(s);
+      (p && Array.isArray(p.stop_deviations) ? p.stop_deviations : [])
+        .forEach(d => { if (d && d.message) msgs.add(d.message); });
+    });
+    BOARDS.forEach(b => departuresFor(b)
+      .forEach(d => d.deviations.forEach(v => { if (v && v.message) msgs.add(v.message); })));
+
+    msgs.forEach(m => {
+      const box = node('div', 'notice');
+      box.appendChild(node('p', 'head', 'SL notice'));
+      box.appendChild(node('p', null, m));
+      el.notices.appendChild(box);
+    });
+  }
+
+  function renderStamp() {
+    if (!fetchedAt) { el.stamp.textContent = ''; return; }
+    const age = Math.round((Date.now() - fetchedAt) / 1000);
+    el.stamp.classList.toggle('stale', age > 120);
+    el.stamp.textContent = age < 15 ? 'just updated'
+      : age < 90 ? `updated ${age}s ago`
+      : `updated ${Math.round(age / 60)} min ago`;
+  }
+
+  function render() {
+    renderNotices();
+    el.boards.replaceChildren(...BOARDS.map(boardNode));
+    renderStamp();
+  }
+
+  /* ---------- polling ---------- */
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  setInterval(renderStamp, 5000);
+  timer = setInterval(() => { if (!document.hidden) load(); else renderStamp(); }, REFRESH_MS);
+
+  // Hook for local testing with stubbed payloads.
+  window.__board = { render, load, payloads, seed(site, p) { payloads.set(site, p); fetchedAt = new Date(); render(); } };
+
+  render();
+  load();
+})();
+</script>
+</body>
+</html>
