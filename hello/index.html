@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello — app.matell.se</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf8;
+    --fg: #1c1b19;
+    --muted: #6b6862;
+    --line: #e4e1db;
+    --card: #ffffff;
+    --accent: #b4530a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161513;
+      --fg: #edeae4;
+      --muted: #9a958c;
+      --line: #2c2a27;
+      --card: #1e1d1a;
+      --accent: #e08a45;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  main {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 32px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: -0.01em; }
+  p { margin: 0 0 24px; color: var(--muted); }
+  button {
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.08); }
+  #out { margin-top: 20px; font-variant-numeric: tabular-nums; min-height: 1.6em; }
+  a { color: var(--accent); }
+  .back { display: block; margin-top: 28px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hello</h1>
+  <p>This folder is an example of how an app lives on this site. Everything here is plain HTML, CSS and JavaScript running in your browser.</p>
+  <button id="go">Click me</button>
+  <div id="out"></div>
+  <a class="back" href="/">&larr; Back to all apps</a>
+</main>
+<script>
+  let n = 0;
+  const out = document.getElementById('out');
+  document.getElementById('go').addEventListener('click', () => {
+    n++;
+    out.textContent = n === 1 ? 'Clicked once.' : `Clicked ${n} times.`;
+  });
+</script>
+</body>
+</html>
