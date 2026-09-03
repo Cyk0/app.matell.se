@@ -1,8 +1,8 @@
 [
   {
-    "slug": "buss",
-    "name": "Departures",
-    "description": "Bus 4 from Banérgatan, bus 1 from Värtavägen, and metro 13 at Karlaplan — live.",
+    "slug": "utga",
+    "name": "Utgångsläget",
+    "description": "Väder och avgångar, innan du går ut. SMHI plus buss 4, buss 1 och tunnelbanan.",
     "added": "2026-09-03"
   }
 ]

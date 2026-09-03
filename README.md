@@ -15,7 +15,7 @@ Static hosting for small web apps, served by GitHub Pages at <https://app.matell
 
 ## Adding an app
 
-1. Create a folder named after the URL you want, e.g. `roi-calculator/`.
+1. Create a folder named after the URL you want, e.g. `roi-calculator/`. Keep slugs lowercase and ASCII — `å`, `ä`, `ö` become percent-escapes in the URL.
 2. Put an `index.html` in it (plus any CSS/JS/images it needs — relative paths only).
 3. Add an entry to `apps.json`:
 
@@ -29,6 +29,16 @@ Static hosting for small web apps, served by GitHub Pages at <https://app.matell
 ```
 
 4. Commit to `main`. GitHub Pages redeploys in under a minute.
+
+## Apps
+
+| Slug | Name | What it is |
+| --- | --- | --- |
+| `utga` | Utgångsläget | Weather for the day plus live SL departures from Banérgatan, Värtavägen and Karlaplan. UI in Swedish. |
+
+## Renaming an app folder
+
+GitHub's web uploader adds files but never removes them, so renaming a folder is two steps: upload the new folder and the updated `apps.json`, then delete the old folder through the GitHub UI (open a file in it → the trash icon → commit). Until the old folder is deleted, both URLs serve.
 
 ## Rules of the road
 
