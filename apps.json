@@ -1,8 +1,8 @@
 [
   {
-    "slug": "hello",
-    "name": "Hello",
-    "description": "A tiny example app. Delete this once you have something real.",
+    "slug": "buss",
+    "name": "Departures",
+    "description": "Bus 4 from Banérgatan, bus 1 from Värtavägen, and metro 13 at Karlaplan — live.",
     "added": "2026-09-03"
   }
 ]
