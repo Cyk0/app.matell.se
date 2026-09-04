@@ -217,9 +217,15 @@
     padding: 10px 14px;
     font-size: 14px;
   }
-  .notice .head { font-weight: 600; }
+  .notice .head { font-weight: 600; line-height: 1.3; }
   .notice p { margin: 0; }
   .notice p + p { margin-top: 6px; }
+  .notice .scope {
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+  }
   .notice code {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 0.86em;
@@ -227,6 +233,38 @@
     padding: 1px 4px;
     border-radius: 3px;
   }
+  /* Details stay folded so a long SL text can't push the departures off screen. */
+  .notice details { margin-top: 7px; }
+  .notice summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--bus);
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.02em;
+  }
+  .notice summary::-webkit-details-marker { display: none; }
+  .notice summary::after {
+    content: "";
+    width: 5px; height: 5px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg) translateY(-1px);
+  }
+  .notice details[open] summary::after { transform: rotate(-135deg) translateY(-1px); }
+  .notice details[open] summary { margin-bottom: 6px; }
+  .notice .body { font-size: 13.5px; color: var(--ink-soft); white-space: pre-line; }
+  .notice .more {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--bus);
+  }
+  .notice .overflow { font-size: 12.5px; color: var(--ink-faint); }
 
   /* ---------- bar ---------- */
   .bar { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-faint); padding: 2px 2px 0; }
@@ -280,8 +318,22 @@
   const SHOW = 4;                      // departures shown per direction
   const REFRESH_MS = 30000;            // departures poll
   const WEATHER_MS = 15 * 60 * 1000;   // SMHI updates hourly; this is plenty
+  const DEV_MS = 5 * 60 * 1000;        // SL asks for at most one deviations call per minute
+  const MAX_NOTICES = 3;               // beyond this, link out instead of filling the screen
+  const KEEP_BUS = new Set(['1', '4']); // the only bus lines worth a disruption notice
 
   const slApi = (site) => `https://transport.integration.sl.se/v1/sites/${site}/departures?forecast=${FORECAST}`;
+
+  // SL's separate deviations service. The departures endpoint only carries bare strings
+  // like "Inställd" with no indication of what is cancelled; this one has a header,
+  // a full description and the affected lines.
+  const devApi = (sites) =>
+    'https://deviations.integration.sl.se/v1/messages?future=false&'
+    + sites.map(s => `site=${s}`).join('&');
+
+  // The stop page Patrik already uses. Its stationPlaceId is the 12-digit prefix
+  // 909100100000 followed by the 4-digit site id (Banérgatan 1114 -> 9091001000001114).
+  const stopPage = (site) => `https://sl.se/?stationPlaceId=909100100000${site}&mode=station-pages-tab`;
   // SMHI retired the old pmp3g v2 endpoint on 2026-03-31; this is the snow1g v1 replacement.
   const SMHI = 'https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1'
              + '/geotype/point/lon/18.0950/lat/59.3355/data.json';
@@ -331,6 +383,7 @@
   let fetchedAt = null;
   let weather = null;         // array of {label, temp, code, mm, past}
   let weatherFailed = false;
+  let deviations = null;      // SL deviation messages for our sites
 
   /* ================= helpers ================= */
 
@@ -583,6 +636,85 @@
     render();
   }
 
+  /* ---------- deviations ---------- */
+
+  async function loadDeviations() {
+    try {
+      const res = await fetch(devApi(SITES), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const list = await res.json();
+      deviations = Array.isArray(list) ? list : [];
+    } catch (_) {
+      // A missing disruption list is not worth an error box of its own.
+      if (deviations === null) deviations = [];
+    }
+    renderNotices();
+  }
+
+  // Messages come in language variants; we only ever want the Swedish one.
+  function variantOf(msg) {
+    const vs = Array.isArray(msg && msg.message_variants) ? msg.message_variants : [];
+    return vs.find(v => v && v.language === 'sv') || vs[0] || {};
+  }
+
+  // scope.stop_areas carries stop-area ids, not site ids, so match on the name
+  // to decide which stop page to link to.
+  function siteOf(msg) {
+    const names = ((msg && msg.scope && msg.scope.stop_areas) || [])
+      .map(a => String((a && a.name) || '').toLowerCase());
+    return names.some(n => n.includes('banérgatan')) ? 1114 : 1115;
+  }
+
+  // All metro counts — the red line is split across lines 13 and 14 and a line-wide
+  // message may name only one of them, so filtering by designation would drop it.
+  // Buses are narrowed to the two lines actually used. A message with no lines in
+  // scope is about the station itself (a broken lift, say) and always counts.
+  function isRelevant(msg) {
+    const lines = (msg && msg.scope && msg.scope.lines) || [];
+    if (!lines.length) return true;
+    return lines.some(l => {
+      const mode = String((l && l.transport_mode) || '').toUpperCase();
+      if (mode === 'METRO') return true;
+      if (mode === 'BUS') return KEEP_BUS.has(String((l && l.designation) || ''));
+      return false;
+    });
+  }
+
+  function importanceOf(msg) {
+    const p = msg && msg.priority;
+    return (p && typeof p.importance_level === 'number') ? p.importance_level : 0;
+  }
+
+  function linkTo(href, text) {
+    const a = node('a', 'more', text);
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    return a;
+  }
+
+  function noticeNode(msg) {
+    const v = variantOf(msg);
+    const box = node('div', 'notice');
+
+    box.appendChild(node('p', 'head', v.header || 'Trafikstörning'));
+    if (v.scope_alias) box.appendChild(node('p', 'scope', v.scope_alias));
+
+    const href = v.weblink || stopPage(siteOf(msg));
+    const details = String(v.details || '').trim();
+
+    if (details) {
+      const d = document.createElement('details');
+      d.appendChild(node('summary', null, 'Mer info'));
+      d.appendChild(node('p', 'body', details));
+      d.appendChild(linkTo(href, 'Öppna på sl.se'));
+      box.appendChild(d);
+    } else {
+      box.appendChild(linkTo(href, 'Öppna på sl.se'));
+    }
+    return box;
+  }
+
   function timeNode(d, cls) {
     const wrap = node('span', `t ${cls}${d.cancelled ? ' off' : ''}`);
     const mins = minsUntil(d.expected);
@@ -602,6 +734,17 @@
       wrap.title = `${d.delay} min sen · tidtabell ${clock(d.scheduled)}`;
     } else {
       wrap.title = `Avgår ${clock(d.expected)}`;
+    }
+
+    // Departure-level notes are bare strings ("Inställd") that only mean anything
+    // beside the departure they belong to — which is why they sit here rather than
+    // in a page-level notice, where they read as gibberish.
+    const notes = d.deviations
+      .map(v => String((v && v.message) || '').trim())
+      .filter(Boolean);
+    if (notes.length && !d.cancelled) {
+      wrap.appendChild(node('span', 'mark', '!'));
+      wrap.title = `${wrap.title} · ${notes.join(' · ')}`;
     }
     return wrap;
   }
@@ -674,21 +817,22 @@
       el.notices.appendChild(node('div', 'notice', 'En hållplats kunde inte uppdateras — visar föregående svar.'));
     }
 
-    const msgs = new Set();
-    SITES.forEach(s => {
-      const p = payloads.get(s);
-      (p && Array.isArray(p.stop_deviations) ? p.stop_deviations : [])
-        .forEach(d => { if (d && d.message) msgs.add(d.message); });
-    });
-    BOARDS.forEach(b => departuresFor(b)
-      .forEach(d => d.deviations.forEach(v => { if (v && v.message) msgs.add(v.message); })));
+    // Real disruption messages, most important first.
+    const list = (deviations || [])
+      .filter(isRelevant)
+      .sort((a, b) => importanceOf(b) - importanceOf(a));
 
-    msgs.forEach(m => {
+    list.slice(0, MAX_NOTICES).forEach(m => el.notices.appendChild(noticeNode(m)));
+
+    if (list.length > MAX_NOTICES) {
+      const rest = list.length - MAX_NOTICES;
       const box = node('div', 'notice');
-      box.appendChild(node('p', 'head', 'Trafikinfo från SL'));
-      box.appendChild(node('p', null, m));
+      box.appendChild(node('p', 'overflow', rest === 1
+        ? '1 fler störning rapporterad.'
+        : `${rest} fler störningar rapporterade.`));
+      box.appendChild(linkTo(stopPage(1115), 'Se alla på sl.se'));
       el.notices.appendChild(box);
-    });
+    }
   }
 
   function renderStamp() {
@@ -708,24 +852,29 @@
 
   /* ================= polling ================= */
 
-  document.getElementById('reload').addEventListener('click', () => { load(); loadWeather(); });
+  document.getElementById('reload').addEventListener('click', () => {
+    load(); loadWeather(); loadDeviations();
+  });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
 
   setInterval(() => { if (!document.hidden) load(); else renderStamp(); }, REFRESH_MS);
   setInterval(() => { if (!document.hidden) loadWeather(); }, WEATHER_MS);
+  setInterval(() => { if (!document.hidden) loadDeviations(); }, DEV_MS);
   setInterval(renderStamp, 5000);
 
   // Hook for local testing with stubbed payloads.
   window.__board = {
-    render, renderWeather,
+    render, renderWeather, renderNotices,
     seedSl(site, p) { payloads.set(site, p); fetchedAt = new Date(); render(); },
     seedWeather(series) { weather = summarise(series); weatherFailed = false; renderWeather(); },
+    seedDeviations(list) { deviations = list; renderNotices(); },
   };
 
   renderWeather();
   render();
   load();
   loadWeather();
+  loadDeviations();
 })();
 </script>
 </body>
